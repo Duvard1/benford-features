@@ -1,56 +1,21 @@
-"""
-metrics.py
-
-Responsabilidad única de este módulo:
-    Cuantificar qué tan lejos está la distribución observada del primer
-    dígito significativo (calculada en benford.py) respecto de la
-    distribución teórica de Benford.
-
-    Se implementan cuatro métricas, tal como se acordó:
-        - Chi-cuadrado (χ²)                  -> ¿la diferencia es
-                                                 estadísticamente
-                                                 significativa?
-        - Mean Absolute Deviation (MAD)       -> ¿qué tan grande es la
-                                                 diferencia, en promedio?
-        - Kullback-Leibler (KL)               -> ¿cuánta información se
-                                                 "pierde" al asumir Benford
-                                                 en vez de lo observado?
-        - Jensen-Shannon (JS)                 -> versión simétrica y
-                                                 acotada de KL, más fácil
-                                                 de comparar entre audios.
-
-    Ninguna de estas métricas decide por sí sola si un audio es "real"
-    o "IA". Sirven para comparar numéricamente varios audios entre sí
-    y, eventualmente, varias representaciones (FFT, PSD, MFCC, etc.)
-    entre sí.
-"""
+# Cuantifica diferencia entre distribuion observada y esperada(Benford)
 
 import numpy as np
 from scipy.stats import chi2 as chi2_dist
 
-# Umbrales de referencia para MAD en el test del primer dígito,
-# publicados por Nigrini (2012) para pruebas de Benford con 9 categorías.
-# Son una referencia orientativa, no una regla absoluta.
+# Umbrales de referencia para MAD en el test del primer dígito, umbrales de nigrini
 UMBRALES_MAD = (
-    (0.006, "Conformidad cercana (close conformity)"),
-    (0.012, "Conformidad aceptable (acceptable conformity)"),
-    (0.015, "Conformidad marginal (marginally acceptable)"),
-    (float("inf"), "No conformidad (nonconformity)"),
+    (0.006, "Conformidad cercana"),
+    (0.012, "Conformidad aceptable"),
+    (0.015, "Conformidad marginal"),
+    (float("inf"), "No conformidad"),
 )
 
-NIVEL_SIGNIFICANCIA = 0.05  # umbral estándar para el p-valor de χ²
+# umbral estándar para el p-valor de χ²
+NIVEL_SIGNIFICANCIA = 0.05  
 
 
 def chi_cuadrado(conteo_observado, frecuencia_esperada, total_valores_validos: int) -> dict:
-    """
-    Prueba de bondad de ajuste χ² entre el conteo observado por dígito
-    y el conteo esperado según Benford (frecuencia_esperada * N).
-
-    Un p-valor bajo (< 0.05) indica que la distribución observada se
-    aleja de Benford de forma estadísticamente significativa (poco
-    probable que sea por azar). Un p-valor alto indica que no hay
-    evidencia suficiente para decir que se aleja de Benford.
-    """
     conteo_observado = np.asarray(conteo_observado, dtype=np.float64)
     frecuencia_esperada = np.asarray(frecuencia_esperada, dtype=np.float64)
     conteo_esperado = frecuencia_esperada * total_valores_validos
@@ -75,11 +40,6 @@ def _interpretar_mad(valor: float) -> str:
 
 
 def mean_absolute_deviation(frecuencia_observada, frecuencia_esperada) -> dict:
-    """
-    MAD: promedio de las diferencias absolutas entre frecuencia
-    observada y esperada, dígito por dígito. Es la métrica más
-    intuitiva: está en la misma escala que las frecuencias (0 a 1).
-    """
     observada = np.asarray(frecuencia_observada, dtype=np.float64)
     esperada = np.asarray(frecuencia_esperada, dtype=np.float64)
 
@@ -92,13 +52,6 @@ def mean_absolute_deviation(frecuencia_observada, frecuencia_esperada) -> dict:
 
 
 def _kl_divergencia(p, q, base: float = 2.0) -> float:
-    """
-    KL(P || Q) = sum( p_i * log(p_i / q_i) ), solo sobre los i donde
-    p_i > 0 (por convención, 0 * log(0/q) = 0).
-
-    Se asume que q_i > 0 en todos los dígitos donde p_i > 0 (cierto
-    para la distribución de Benford, que nunca es cero en 1-9).
-    """
     p = np.asarray(p, dtype=np.float64)
     q = np.asarray(q, dtype=np.float64)
 
@@ -110,27 +63,11 @@ def _kl_divergencia(p, q, base: float = 2.0) -> float:
 
 
 def kullback_leibler(frecuencia_observada, frecuencia_esperada) -> dict:
-    """
-    Divergencia KL de la distribución observada respecto a la
-    esperada (Benford). Se reporta en base 2 (bits): 0 significa
-    distribuciones idénticas; valores más altos indican mayor
-    divergencia. A diferencia de MAD, KL penaliza más fuerte las
-    diferencias en dígitos donde Benford espera poca frecuencia
-    (dígitos altos, 7-9).
-    """
     valor = _kl_divergencia(frecuencia_observada, frecuencia_esperada, base=2.0)
     return {"valor": valor, "unidad": "bits (log base 2)"}
 
 
 def jensen_shannon(frecuencia_observada, frecuencia_esperada) -> dict:
-    """
-    Divergencia de Jensen-Shannon: versión simétrica y acotada de KL.
-    JS(P, Q) = 0.5 * KL(P || M) + 0.5 * KL(Q || M), donde M = (P+Q)/2.
-
-    En base 2, está siempre entre 0 (distribuciones idénticas) y 1
-    (distribuciones totalmente distintas), lo que la hace más fácil
-    de comparar entre audios distintos que KL (que no está acotada).
-    """
     p = np.asarray(frecuencia_observada, dtype=np.float64)
     q = np.asarray(frecuencia_esperada, dtype=np.float64)
     m = 0.5 * (p + q)
@@ -143,14 +80,6 @@ def jensen_shannon(frecuencia_observada, frecuencia_esperada) -> dict:
 
 
 def comparar_con_benford(resultado_benford: dict) -> dict:
-    """
-    Orquesta el cálculo de las cuatro métricas a partir del resultado
-    de benford.analizar_benford(...).
-
-    Retorna un diccionario con las cuatro métricas y un resumen breve,
-    listo para devolverse en la respuesta JSON o para comparar entre
-    varios audios / representaciones.
-    """
     conteo_observado = resultado_benford["conteo_observado"]
     frecuencia_observada = resultado_benford["frecuencia_observada"]
     frecuencia_esperada = resultado_benford["frecuencia_esperada_benford"]

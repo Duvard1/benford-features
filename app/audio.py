@@ -1,5 +1,5 @@
-# Este módulo solo entrega audio ya estandarizado y listo para procesar.
-import subprocess
+# Audio ya estandarizado y listo para procesar.
+import subprocess # Para ejecutar comandos externos, como ffmpeg.
 from pathlib import Path
 import numpy as np
 import soundfile as sf
@@ -43,7 +43,7 @@ def convertir_a_wav_pcm(ruta_entrada: Path, ruta_salida: Path) -> Path:
 def cargar_muestras_pcm(ruta_wav: Path) -> tuple[np.ndarray, int]:
     muestras, sample_rate = sf.read(ruta_wav, dtype="float32")
     if muestras.ndim > 1:
-        muestras = muestras.mean(axis=1)
+        muestras = muestras.mean(axis=1) #monocanal
     return muestras, sample_rate
 
 # Orquesta el flujo completo de preprocesamiento: archivo original -> WAV PCM mono 16kHz -> muestras cargadas

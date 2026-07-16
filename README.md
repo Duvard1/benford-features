@@ -1,12 +1,11 @@
-# Benford Audio Analysis API — MVP 
+# Benford features
 
 Análisis de audio con la Ley de Benford para distinguir voces reales de voces clonadas por IA. Flujo completo implementado para múltiples representaciones de audio: conversión/estandarización del audio, extracción de características espectrales/cepstrales, aplicación de la Ley de Benford, y cálculo de métricas de desviación ($\chi^2$, MAD, KL, JS).
-
 La API soporta múltiples representaciones para analizar el comportamiento y la distribución de sus primeros dígitos significativos.
 
 ---
 
-## Requisitos previos
+## Requisitos previoss
 
 - Python 3.10+
 - **FFmpeg instalado en el sistema** (no es una librería de Python, es un binario). La conversión se invoca desde Python vía `subprocess`.
@@ -28,12 +27,7 @@ Si no lo tienes:
 
 ```bash
 python -m venv venv
-# Activar entorno virtual
-# En Windows (PowerShell):
 .\venv\Scripts\activate
-# En Linux/macOS:
-source venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
@@ -61,12 +55,12 @@ curl -X POST http://127.0.0.1:8000/benford-features \
 ```
 
 ### Parámetros de `feature` soportados:
-- **`fft`**: Magnitudes crudas de la FFT real ($|X(k)|$).
-- **`psd`**: Power Spectral Density ($|X(k)|^2 / (f_s \cdot \sum w^2)$).
-- **`stft`**: Magnitudes normalizadas de la STFT ($|X(k)| / \sum w$).
-- **`mel`**: Espectrograma de Mel en escala de potencia lineal (sin compresión logarítmica).
-- **`logmel`**: Log-Mel Espectrograma en escala logarítmica en dB.
-- **`mfcc`**: Coeficientes Cepstrales en las Frecuencias de Mel (13 coeficientes).
+- **`fft`**: ¿Qué frecuencias tiene el audio?
+- **`psd`**: ¿Cuánta energía tiene cada frecuencia?
+- **`stft`**: ¿Qué frecuencias aparecen en cada instante?
+- **`mel`**: Igual que la STFT, pero imitando el oído humano.
+- **`logmel`**: Mel Spectrogram con volumen en escala logarítmica.
+- **`mfcc`**: Un resumen matemático del Log-Mel.
 
 ### Ejemplo de respuesta esperada (para `feature=fft`):
 
@@ -126,18 +120,18 @@ curl -X POST http://127.0.0.1:8000/benford-features \
 ```
 
 > [!NOTE]
-> `valores_excluidos` cuenta cuántos valores eran exactamente 0 (silencio en esa frecuencia/ventana) y por lo tanto no tienen primer dígito significativo definido. Se excluyen del análisis pero se reportan.
+>`valores_excluidos` cuenta cuántos valores eran exactamente 0 (silencio en esa frecuencia/ventana) y por lo tanto no tienen primer dígito significativo definido. Se excluyen del análisis pero se reportan.
 
 ---
 
 ## Cómo interpretar las métricas
 
-- **$\chi^2$ (chi-cuadrado)**: Evalúa si la diferencia entre la distribución observada y la distribución de Benford es estadísticamente significativa. Un `p_valor < 0.05` indica no conformidad estadística. Debido al gran volumen de datos, suele ser muy sensible.
 - **MAD (Mean Absolute Deviation)**: Promedio de diferencias absolutas entre las frecuencias. Se interpreta bajo los umbrales de Nigrini (2012):
   * `< 0.006`: Conformidad cercana (close conformity).
   * `0.006 - 0.012`: Conformidad aceptable (acceptable conformity).
   * `0.012 - 0.015`: Conformidad marginal (marginally acceptable).
   * `> 0.015`: No conformidad (nonconformity).
+- **$\chi^2$ (chi-cuadrado)**: Evalúa si la diferencia entre la distribución observada y la distribución de Benford es estadísticamente significativa. Un `p_valor < 0.05` indica no conformidad estadística. Debido al gran volumen de datos, suele ser muy sensible.
 - **KL (Kullback-Leibler)**: Medida asimétrica que penaliza más fuertemente las diferencias en los dígitos menos frecuentes de Benford (7, 8, 9).
 - **JS (Jensen-Shannon)**: Versión simétrica y acotada en $[0, 1]$ de la divergencia KL. Muy adecuada para comparar directamente la similitud entre dos audios (ej. real vs clonado).
 

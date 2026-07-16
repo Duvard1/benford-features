@@ -1,10 +1,8 @@
 #Funciones auxiliares de propósito general:
-
 import uuid
 from pathlib import Path
 
 # Extensiones de audio que el sistema acepta como entrada.
-# Todo lo que no esté en esta lista será rechazado en el endpoint.
 ALLOWED_EXTENSIONS = {".aac", ".mp3", ".wav", ".m4a", ".ogg", ".opus"}
 
 

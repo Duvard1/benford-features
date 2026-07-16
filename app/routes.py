@@ -1,30 +1,6 @@
-"""
-routes.py
-
-Define los endpoints de la API.
-
-Flujo actual de /benford-features:
-    1. Recibe el archivo de audio + el parámetro "feature".
-    2. Valida su extensión.
-    3. Lo guarda en /uploads.
-    4. Lo convierte a WAV PCM mono 16kHz en /temp.
-    5. Carga las muestras.
-    6. Según la feature solicitada:
-       - "fft": Extrae las magnitudes FFT (ventaneo + Hann + FFT real).
-       - "psd": Estima la Power Spectral Density por ventana.
-       - "stft": Calcula el espectrograma STFT (magnitudes normalizadas).
-       - "logmel": Log-Mel Espectrograma (128 bandas Mel en dB).
-       - "mel": Mel Espectrograma en potencia lineal (sin log).
-       - "mfcc": Coeficientes Cepstrales en las Frecuencias de Mel (13 coefs).
-    7. Aplica la Ley de Benford sobre los valores extraídos.
-    8. Calcula las métricas de desviación (χ², MAD, KL, JS) entre lo
-       observado y Benford.
-"""
-
 from pathlib import Path
-
-import numpy as np
-import soundfile as sf
+import numpy as np # Para manejar arreglos numéricos.
+import soundfile as sf # Para leer y escribir archivos de audio.
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.audio import AudioConversionError, procesar_audio
@@ -47,18 +23,11 @@ TEMP_DIR = Path("temp")
 UPLOADS_DIR.mkdir(exist_ok=True)
 TEMP_DIR.mkdir(exist_ok=True)
 
-# Representaciones soportadas hasta ahora. El resto (mfcc, etc.)
-# se irá agregando en etapas posteriores, reutilizando este mismo flujo.
 FEATURES_IMPLEMENTADAS = {"fft", "psd", "stft", "logmel", "mel", "mfcc"}
 
-
+# Crear ruta /benford-features
 @router.post("/benford-features")
 async def benford_features(file: UploadFile = File(...), feature: str = Form("fft")):
-    """
-    Recibe un archivo de audio y la representación a analizar,
-    lo convierte a WAV PCM mono 16kHz y extrae los valores
-    correspondientes para el análisis de Benford.
-    """
     feature = feature.lower().strip()
 
     if feature not in FEATURES_IMPLEMENTADAS:
